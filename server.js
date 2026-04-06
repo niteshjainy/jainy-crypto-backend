@@ -7,9 +7,25 @@ app.use(cors());
 
 const PORT = 3001;
 
+// ===== SIMPLE STORE =====
+let globalState = {
+    systems: null,
+};
+
 // TEST
 app.get("/", (req, res) => {
     res.send("Backend running 🚀");
+});
+
+// SAVE
+app.post("/save-state", (req, res) => {
+    globalState.systems = req.body;
+    res.json({ success: true });
+});
+
+// GET
+app.get("/get-state", (req, res) => {
+    res.json(globalState.systems || {});
 });
 
 // ✅ PROXY (WORKING IN EXPRESS 4)
