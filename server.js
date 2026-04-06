@@ -1,34 +1,58 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const fs = require("fs");
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 const PORT = 3001;
 
-// ===== SIMPLE STORE =====
-let globalState = {
-    systems: null,
-};
+const FILE = "./data.json";
 
-// TEST
-app.get("/", (req, res) => {
-    res.send("Backend running 🚀");
+// ===== LOAD FILE =====
+function loadData() {
+    try {
+        if (fs.existsSync(FILE)) {
+            return JSON.parse(fs.readFileSync(FILE));
+        }
+    } catch (e) { }
+    return { systems: null, version: 0 };
+}
+
+// ===== SAVE FILE =====
+function saveData(data) {
+    fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+}
+
+let globalState = loadData();
+
+// ===== GET =====
+app.get("/get-state", (req, res) => {
+    res.json(globalState);
 });
 
-// SAVE
+// ===== SAVE =====
 app.post("/save-state", (req, res) => {
-    globalState.systems = req.body;
+    const { systems, version } = req.body;
+
+    if (version < globalState.version) {
+        return res.json({
+            success: false,
+            message: "Outdated",
+            latest: globalState,
+        });
+    }
+
+    globalState = { systems, version };
+
+    saveData(globalState);
+
     res.json({ success: true });
 });
 
-// GET
-app.get("/get-state", (req, res) => {
-    res.json(globalState.systems || {});
-});
-
-// ✅ PROXY (WORKING IN EXPRESS 4)
+// ===== PROXY =====
 app.get("/api/*", async (req, res) => {
     try {
         const path = req.params[0];
@@ -44,13 +68,10 @@ app.get("/api/*", async (req, res) => {
 
         res.json(response.data);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({
-            error: err.response?.data || err.message,
-        });
+        res.status(500).json({ error: err.message });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on ${PORT}`);
 });
